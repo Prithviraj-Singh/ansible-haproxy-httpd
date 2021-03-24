@@ -1,0 +1,54 @@
+---
+
+- hosts: proxy
+  vars:
+    - s_port: 80
+  tasks:
+
+    - name: installing HaProxy...
+      package:
+        name: haproxy
+        state: present
+
+    - name: copying the configuration file...
+      template:
+        src: haproxy.j2
+        dest: /etc/haproxy/haproxy.cfg
+      notify: restarting haproxy... 
+
+    - name: starting the service...
+      service:
+        name: haproxy
+        state: started
+        enabled: yes
+      register: started
+
+    - name: setting up facts...
+      set_fact:
+        condition_restart: "{{ started.changed==False }}"
+
+  handlers:
+    - name: restarting haproxy...
+      service: 
+        name: haproxy
+        state: restarted
+      when: condition_restart
+
+- hosts: server
+  tasks:
+    - name: installing httpd...
+      package:
+        name: httpd
+        state: present
+
+    - name: starting service...
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: copying content...
+      template:
+        src: index.j2
+        dest: /var/www/html/index.html
+
